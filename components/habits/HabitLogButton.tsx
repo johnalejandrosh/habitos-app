@@ -79,7 +79,7 @@ export function HabitLogButton({
       className={`relative flex touch-manipulation select-none flex-col items-center justify-center overflow-hidden rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/25 transition-[transform,box-shadow] active:bg-emerald-700 active:scale-[0.98] ${
         fullWidth ? "h-14 w-full" : "h-[4.25rem] min-w-[5.25rem]"
       } ${holding ? "scale-[0.98]" : ""}`}
-      aria-label={`Registrar ${habitName}. Mantén pulsado para varios sin nota.`}
+      aria-label={`Registrar ${habitName}. Mantén pulsado para varios registros.`}
     >
       {holding && (
         <span

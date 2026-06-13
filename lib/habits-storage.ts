@@ -1,9 +1,21 @@
+import {
+  DEFAULT_HABIT_NOTIFICATION_PREFS,
+  getNotificationScheduleTimes,
+  normalizeFrequency,
+  type HabitNotificationPrefs,
+} from "./notification-prefs";
+
 export const HABITS_STORAGE_KEY = "habitos-app-tracking";
+const LEGACY_NOTIFICATION_PREFS_KEY = "habitos-notification-prefs";
+const NOTIFICATION_MIGRATION_KEY = "habitos-notification-migrated";
+
+export type { HabitNotificationPrefs };
 
 export type Habit = {
   id: string;
   name: string;
   emoji?: string;
+  notifications?: HabitNotificationPrefs;
 };
 
 export type HabitEntry = {
@@ -39,6 +51,48 @@ type LegacyHabitStore = {
 
 export function createEmptyStore(): HabitStore {
   return { habits: [], entries: [] };
+}
+
+function migrateGlobalNotificationPrefs(store: HabitStore): HabitStore {
+  if (typeof window === "undefined") return store;
+  if (localStorage.getItem(NOTIFICATION_MIGRATION_KEY)) return store;
+
+  localStorage.setItem(NOTIFICATION_MIGRATION_KEY, "1");
+
+  try {
+    const raw = localStorage.getItem(LEGACY_NOTIFICATION_PREFS_KEY);
+    if (!raw) return store;
+
+    const global = JSON.parse(raw) as {
+      enabled: boolean;
+      times: string[];
+      onlyIfNoLogsToday: boolean;
+    };
+    if (!global.enabled || store.habits.length === 0) return store;
+
+    const legacyTimes = Array.isArray(global.times)
+      ? global.times
+      : getNotificationScheduleTimes(DEFAULT_HABIT_NOTIFICATION_PREFS.frequency);
+
+    const perHabit: HabitNotificationPrefs = {
+      enabled: true,
+      onlyIfNoLogsToday:
+        global.onlyIfNoLogsToday ??
+        DEFAULT_HABIT_NOTIFICATION_PREFS.onlyIfNoLogsToday,
+      frequency: normalizeFrequency(undefined, legacyTimes),
+    };
+
+    return {
+      ...store,
+      habits: store.habits.map((habit) =>
+        habit.notifications
+          ? habit
+          : { ...habit, notifications: { ...perHabit } },
+      ),
+    };
+  } catch {
+    return store;
+  }
 }
 
 function isLegacyStore(data: unknown): data is LegacyHabitStore {
@@ -79,7 +133,9 @@ export function loadHabitStore(): HabitStore {
     }
     const store = parsed as HabitStore;
     if (!store.habits || !Array.isArray(store.entries)) return createEmptyStore();
-    return store;
+    const migrated = migrateGlobalNotificationPrefs(store);
+    if (migrated !== store) saveHabitStore(migrated);
+    return migrated;
   } catch {
     return createEmptyStore();
   }

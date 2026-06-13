@@ -1,9 +1,12 @@
-import { countEntriesToday, loadHabitStore } from "./habits-storage";
 import {
-  loadNotificationPrefs,
+  countEntriesToday,
+  loadHabitStore,
+  type Habit,
+} from "./habits-storage";
+import {
+  getHabitNotificationPrefs,
   markSlotSent,
-  type NotificationPrefs,
-  wasSlotSentToday,
+  shouldFireHabitReminder,
 } from "./notification-prefs";
 
 export type NotificationPermissionState =
@@ -36,26 +39,19 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
-export async function syncPrefsToServiceWorker(
-  prefs: NotificationPrefs,
-): Promise<void> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-  const reg = await navigator.serviceWorker.ready.catch(() => null);
-  reg?.active?.postMessage({ type: "UPDATE_PREFS", prefs });
-}
-
-export function buildReminderMessage(logsToday: number): {
-  title: string;
-  body: string;
-} {
+export function buildHabitReminderMessage(
+  habit: Habit,
+  logsToday: number,
+): { title: string; body: string } {
+  const emoji = habit.emoji ?? "✅";
   if (logsToday === 0) {
     return {
-      title: "Hábitos · Recordatorio",
-      body: "Aún no registraste nada hoy. ¿Qué hábito vas a marcar?",
+      title: `${emoji} ${habit.name}`,
+      body: `Aún no registraste «${habit.name}» hoy.`,
     };
   }
   return {
-    title: "Hábitos · Sigue así",
+    title: `${emoji} ${habit.name} · Sigue así`,
     body: `Llevas ${logsToday} registro${logsToday === 1 ? "" : "s"} hoy. ¿Sumas otro?`,
   };
 }
@@ -91,36 +87,28 @@ export function getCurrentTimeSlot(): string {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-export function shouldFireReminder(
-  prefs: NotificationPrefs,
-  slot: string,
-  logsToday: number,
-): boolean {
-  if (!prefs.enabled) return false;
-  if (!prefs.times.includes(slot)) return false;
-  if (wasSlotSentToday(slot)) return false;
-  if (prefs.onlyIfNoLogsToday && logsToday > 0) return false;
-  return true;
-}
-
 export function checkAndFireReminders(): void {
   if (getNotificationSupport() !== "granted") return;
 
-  const prefs = loadNotificationPrefs();
-  if (!prefs.enabled) return;
-
-  const slot = getCurrentTimeSlot();
   const store = loadHabitStore();
-  const logsToday = countEntriesToday(store.entries);
+  const slot = getCurrentTimeSlot();
 
-  if (!shouldFireReminder(prefs, slot, logsToday)) return;
+  for (const habit of store.habits) {
+    const prefs = getHabitNotificationPrefs(habit);
+    const logsToday = countEntriesToday(store.entries, habit.id);
 
-  const { title, body } = buildReminderMessage(logsToday);
-  showLocalNotification(title, body, `habitos-${slot}`);
-  markSlotSent(slot);
+    if (!shouldFireHabitReminder(prefs, habit.id, slot, logsToday)) continue;
+
+    const { title, body } = buildHabitReminderMessage(habit, logsToday);
+    showLocalNotification(title, body, `habitos-${habit.id}-${slot}`);
+    markSlotSent(habit.id, slot);
+  }
 }
 
-export async function sendTestNotification(): Promise<void> {
+export async function sendTestNotification(
+  habitName: string,
+  emoji?: string,
+): Promise<void> {
   const state = getNotificationSupport();
   if (state === "unsupported") throw new Error("unsupported");
   if (state !== "granted") {
@@ -128,8 +116,8 @@ export async function sendTestNotification(): Promise<void> {
     if (next !== "granted") throw new Error("denied");
   }
   showLocalNotification(
-    "Hábitos · Prueba",
-    "Las notificaciones están activas. Te recordaremos según tu horario.",
-    "habitos-test",
+    `${emoji ?? "✅"} ${habitName} · Prueba`,
+    "Los recordatorios de este hábito están activos.",
+    `habitos-test-${Date.now()}`,
   );
 }

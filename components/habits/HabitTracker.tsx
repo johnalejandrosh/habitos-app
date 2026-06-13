@@ -19,9 +19,9 @@ import {
   loadHabitStore,
   saveHabitStore,
   type Habit,
+  type HabitNotificationPrefs,
   type HabitStore,
 } from "@/lib/habits-storage";
-import { loadNotificationPrefs } from "@/lib/notification-prefs";
 import { isSoundEnabled, playTick, setSoundEnabled } from "@/lib/sounds";
 import { useHabitReminders } from "@/hooks/use-habit-reminders";
 import {
@@ -37,6 +37,7 @@ import { HistorySheet } from "./HistorySheet";
 import { InsightsSection } from "./InsightsSection";
 import { LogEntrySheet } from "./LogEntrySheet";
 import { NotificationSettingsSheet } from "./NotificationSettingsSheet";
+import { AppNav } from "./AppNav";
 import { StatsSheet } from "./StatsSheet";
 import { ToastStack, type ToastItem } from "./ToastStack";
 
@@ -60,8 +61,7 @@ export function HabitTracker() {
   const [combos, setCombos] = useState<Record<string, number>>({});
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [soundOn, setSoundOn] = useState(true);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsOn, setNotificationsOn] = useState(false);
+  const [notificationHabit, setNotificationHabit] = useState<Habit | null>(null);
 
   useHabitReminders(store);
 
@@ -72,7 +72,6 @@ export function HabitTracker() {
   useEffect(() => {
     setStore(loadHabitStore());
     setSoundOn(isSoundEnabled());
-    setNotificationsOn(loadNotificationPrefs().enabled);
     return () => {
       Object.values(comboTimers.current).forEach(clearTimeout);
     };
@@ -201,37 +200,6 @@ export function HabitTracker() {
     [store, persist, scheduleComboToast, maybeCelebrate, pushToast],
   );
 
-  function logHabitMany(
-    habitId: string,
-    habitName: string,
-    habitEmoji: string,
-    n: number,
-  ) {
-    if (!store) return;
-
-    const countBefore = countEntriesToday(store.entries, habitId);
-    const newEntries = Array.from({ length: n }, () => createHabitEntry(habitId));
-    const next = { ...store, entries: [...store.entries, ...newEntries] };
-    persist(next);
-
-    const countAfter = countBefore + n;
-    const totalAfter = countEntriesToday(next.entries);
-
-    hapticSuccess();
-    playTick(720);
-    setPulseHabitId(habitId);
-    setFlashHabitId(habitId);
-    setTimeout(() => {
-      setPulseHabitId(null);
-      setFlashHabitId(null);
-    }, 500);
-    setCounterBump(true);
-    setTimeout(() => setCounterBump(false), 400);
-    setConfettiKey((k) => k + 1);
-    pushToast(`+${n} registros · ${habitName}`);
-    maybeCelebrate(habitId, habitName, habitEmoji, countAfter, totalAfter);
-  }
-
   function addHabit(e: React.FormEvent) {
     e.preventDefault();
     const name = newHabitName.trim();
@@ -276,7 +244,25 @@ export function HabitTracker() {
     });
     celebrated.current.habits.delete(habitId);
     if (historyHabitId === habitId) setHistoryHabitId(null);
+    if (notificationHabit?.id === habitId) setNotificationHabit(null);
     pushToast("Hábito eliminado", "info");
+  }
+
+  function updateHabitNotifications(
+    habitId: string,
+    notifications: HabitNotificationPrefs,
+  ) {
+    if (!store) return;
+    const habits = store.habits.map((habit) =>
+      habit.id === habitId ? { ...habit, notifications } : habit,
+    );
+    persist({ ...store, habits });
+    setNotificationHabit(
+      (current) =>
+        current?.id === habitId
+          ? habits.find((habit) => habit.id === habitId) ?? null
+          : current,
+    );
   }
 
   function toggleSound() {
@@ -354,9 +340,10 @@ export function HabitTracker() {
       />
 
       <NotificationSettingsSheet
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        onPrefsChange={(prefs) => setNotificationsOn(prefs.enabled)}
+        habit={notificationHabit}
+        open={!!notificationHabit}
+        onClose={() => setNotificationHabit(null)}
+        onSave={updateHabitNotifications}
       />
 
       <header className="sticky top-0 z-10 bg-zinc-50/90 px-5 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))] backdrop-blur-md dark:bg-black/90">
@@ -364,39 +351,22 @@ export function HabitTracker() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Hábitos
           </h1>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen(true)}
-              className={`relative flex h-11 w-11 items-center justify-center rounded-2xl text-lg active:scale-95 ${
-                notificationsOn
-                  ? "bg-emerald-100 dark:bg-emerald-950"
-                  : "bg-zinc-200/80 dark:bg-zinc-800"
-              }`}
-              aria-label="Configurar notificaciones"
-            >
-              🔔
-              {notificationsOn && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={toggleSound}
-              className={`flex h-11 w-11 items-center justify-center rounded-2xl text-lg active:scale-95 ${
-                soundOn
-                  ? "bg-emerald-100 dark:bg-emerald-950"
-                  : "bg-zinc-200/80 dark:bg-zinc-800"
-              }`}
-              aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}
-            >
-              {soundOn ? "🔊" : "🔇"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={toggleSound}
+            className={`flex h-11 w-11 items-center justify-center rounded-2xl text-lg active:scale-95 ${
+              soundOn
+                ? "bg-emerald-100 dark:bg-emerald-950"
+                : "bg-zinc-200/80 dark:bg-zinc-800"
+            }`}
+            aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}
+          >
+            {soundOn ? "🔊" : "🔇"}
+          </button>
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-8 px-5 py-6 pb-28">
+      <main className="flex flex-1 flex-col gap-8 px-5 py-6 pb-36">
         <DailyProgressHero
           totalToday={totalToday}
           yesterdayTotal={yesterdayTotal}
@@ -442,17 +412,18 @@ export function HabitTracker() {
                 ringPulse={pulseHabitId === habit.id}
                 flash={flashHabitId === habit.id}
                 onOpenHistory={() => setHistoryHabitId(habit.id)}
-                onRequestLog={() => setLogSheetHabit(habit)}
+                onRequestLog={() =>
+                  logHabit(habit.id, habit.name, habit.emoji ?? "✅")
+                }
+                onRequestLogWithNote={() => setLogSheetHabit(habit)}
                 onHoldLog={() =>
                   logHabit(habit.id, habit.name, habit.emoji ?? "✅", {
                     silent: true,
                   })
                 }
-                onLogMany={(n) =>
-                  logHabitMany(habit.id, habit.name, habit.emoji ?? "✅", n)
-                }
                 onUndo={() => undoLastEntry(habit.id)}
                 onRemove={() => removeHabit(habit.id)}
+                onOpenNotifications={() => setNotificationHabit(habit)}
               />
             ))
           )}
@@ -473,11 +444,13 @@ export function HabitTracker() {
       <button
         type="button"
         onClick={() => setAddSheetOpen(true)}
-        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-20 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-3xl font-light text-white shadow-lg shadow-emerald-600/40 active:scale-95 active:bg-emerald-700"
+        className="fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] right-5 z-20 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-3xl font-light text-white shadow-lg shadow-emerald-600/40 active:scale-95 active:bg-emerald-700"
         aria-label="Añadir hábito"
       >
         +
       </button>
+
+      <AppNav />
     </div>
   );
 }

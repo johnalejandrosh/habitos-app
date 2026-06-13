@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { DAILY_VISUAL_GOAL } from "@/lib/habit-feedback";
-import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { hapticLight, hapticWarning } from "@/lib/haptics";
 import type { Habit } from "@/lib/habits-storage";
+import {
+  formatFrequencyLabel,
+  getHabitNotificationPrefs,
+} from "@/lib/notification-prefs";
 import { playTick } from "@/lib/sounds";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { BellIcon, MoreIcon, TrashIcon } from "./HabitIcons";
 import { HabitLogButton } from "./HabitLogButton";
-import { QuickLogChips } from "./QuickLogChips";
 import { useSwipeAction } from "./use-swipe-action";
 
 type HabitCardProps = {
@@ -19,10 +23,11 @@ type HabitCardProps = {
   flash: boolean;
   onOpenHistory: () => void;
   onRequestLog: () => void;
+  onRequestLogWithNote?: () => void;
   onHoldLog?: () => void;
-  onLogMany: (n: number) => void;
   onUndo: () => void;
   onRemove: () => void;
+  onOpenNotifications: () => void;
 };
 
 export function HabitCard({
@@ -34,15 +39,21 @@ export function HabitCard({
   flash,
   onOpenHistory,
   onRequestLog,
+  onRequestLogWithNote,
   onHoldLog,
-  onLogMany,
   onUndo,
   onRemove,
+  onOpenNotifications,
 }: HabitCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const goalReached = count >= DAILY_VISUAL_GOAL;
   const emoji = habit.emoji ?? "✅";
+  const habitNotifications = getHabitNotificationPrefs(habit);
+  const notificationsOn = habitNotifications.enabled;
+  const notificationLabel = notificationsOn
+    ? formatFrequencyLabel(habitNotifications.frequency)
+    : null;
 
   const { offset, handlers, reset } = useSwipeAction(() => {
     if (count > 0) {
@@ -51,11 +62,6 @@ export function HabitCard({
     }
     reset();
   });
-
-  function handleQuickMany(n: number) {
-    hapticSuccess();
-    onLogMany(n);
-  }
 
   return (
     <div className="relative overflow-hidden rounded-3xl">
@@ -97,60 +103,94 @@ export function HabitCard({
                 onRequestLog();
               }}
               className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl active:opacity-80 ${
-                ringPulse ? "habit-counter-bump bg-emerald-100 dark:bg-emerald-950" : "bg-zinc-100 dark:bg-zinc-900"
+                ringPulse
+                  ? "habit-counter-bump bg-emerald-100 dark:bg-emerald-950"
+                  : "bg-zinc-100 dark:bg-zinc-900"
               }`}
               aria-label={`Registrar ${habit.name}`}
             >
               {emoji}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                hapticLight();
-                onRequestLog();
-              }}
-              className="min-w-0 flex-1 pt-0.5 text-left active:opacity-80"
-            >
+            <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-lg font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
-                  {habit.name}
-                </h3>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((o) => !o)}
-                  className="shrink-0 rounded-lg px-2 py-1 text-zinc-400 active:bg-zinc-100 dark:active:bg-zinc-800"
-                  aria-label="Opciones"
+                  onClick={() => {
+                    hapticLight();
+                    onRequestLog();
+                  }}
+                  className="min-w-0 flex-1 text-left active:opacity-80"
                 >
-                  ···
+                  <h3 className="text-lg font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
+                    {habit.name}
+                  </h3>
                 </button>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {notificationsOn && (
+                    <span
+                      className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                      title="Recordatorios activos"
+                      aria-label="Recordatorios activos"
+                    >
+                      <BellIcon />
+                      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-950" />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticLight();
+                      setMenuOpen((o) => !o);
+                    }}
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl transition active:scale-95 ${
+                      menuOpen
+                        ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                        : "bg-zinc-100 text-zinc-500 active:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:active:bg-zinc-800"
+                    }`}
+                    aria-label="Opciones"
+                    aria-expanded={menuOpen}
+                  >
+                    <MoreIcon />
+                  </button>
+                </div>
               </div>
 
-              <p className="mt-2 text-sm text-zinc-500">
-                {count === 0 ? (
-                  "Aún sin registros hoy"
-                ) : (
-                  <>
-                    <AnimatedNumber
-                      value={count}
-                      className="text-base font-bold text-emerald-700 dark:text-emerald-400"
-                    />{" "}
-                    {count === 1 ? "vez" : "veces"}
-                    {goalReached && (
-                      <span className="ml-2 font-medium text-amber-600">
-                        · meta ✓
-                      </span>
-                    )}
-                  </>
-                )}
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  hapticLight();
+                  onRequestLog();
+                }}
+                className="mt-2 w-full text-left active:opacity-80"
+              >
+                <p className="text-sm text-zinc-500">
+                  {count === 0 ? (
+                    "Aún sin registros hoy"
+                  ) : (
+                    <>
+                      <AnimatedNumber
+                        value={count}
+                        className="text-base font-bold text-emerald-700 dark:text-emerald-400"
+                      />{" "}
+                      {count === 1 ? "vez" : "veces"}
+                      {goalReached && (
+                        <span className="ml-2 font-medium text-amber-600">
+                          · meta ✓
+                        </span>
+                      )}
+                    </>
+                  )}
+                </p>
 
-              {streak >= 2 && (
-                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
-                  <span className="habit-flame">🔥</span> {streak} días
-                </span>
-              )}
-            </button>
+                {streak >= 2 && (
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                    <span className="habit-flame">🔥</span> {streak} días
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {count > 0 && count < DAILY_VISUAL_GOAL && (
@@ -173,7 +213,18 @@ export function HabitCard({
             fullWidth
           />
 
-          <QuickLogChips onLogMany={handleQuickMany} />
+          {onRequestLogWithNote && (
+            <button
+              type="button"
+              onClick={() => {
+                hapticLight();
+                onRequestLogWithNote();
+              }}
+              className="w-full py-1 text-sm font-medium text-zinc-400 active:text-emerald-600 dark:active:text-emerald-400"
+            >
+              Con nota
+            </button>
+          )}
 
           {count > 0 && (
             <button
@@ -193,12 +244,50 @@ export function HabitCard({
                 <button
                   type="button"
                   onClick={() => {
+                    hapticLight();
+                    setMenuOpen(false);
+                    onOpenNotifications();
+                  }}
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-left active:bg-zinc-50 dark:active:bg-zinc-900"
+                >
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      notificationsOn
+                        ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                    }`}
+                  >
+                    <BellIcon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      Recordatorios
+                    </span>
+                    {notificationsOn && notificationLabel ? (
+                      <span className="mt-0.5 block truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        {notificationLabel}
+                      </span>
+                    ) : (
+                      <span className="mt-0.5 block text-xs text-zinc-500">
+                        Configurar frecuencia
+                      </span>
+                    )}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     hapticWarning();
                     setConfirmDelete(true);
                   }}
-                  className="rounded-2xl py-3 text-sm font-medium text-red-600 active:bg-red-50 dark:active:bg-red-950/30"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-left active:bg-red-50 dark:active:bg-red-950/30"
                 >
-                  Eliminar hábito
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">
+                    <TrashIcon className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                    Eliminar hábito
+                  </span>
                 </button>
                 <p className="text-center text-xs text-zinc-400">
                   Desliza la tarjeta ← para deshacer un registro

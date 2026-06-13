@@ -69,7 +69,7 @@ export function LogEntrySheet({
             >
               {habit.name}
             </h3>
-            <p className="text-sm text-zinc-500">¿Qué hiciste?</p>
+            <p className="text-sm text-zinc-500">Añade una nota si quieres</p>
           </div>
         </div>
 
@@ -107,7 +107,7 @@ export function LogEntrySheet({
               onClick={() => onConfirm(undefined)}
               className="min-h-12 w-full rounded-2xl text-sm font-semibold text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-900"
             >
-              Guardar sin descripción
+              Guardar sin nota
             </button>
           </div>
         </form>

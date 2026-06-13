@@ -30,11 +30,11 @@ export function CoachMarks({ hasHabits }: CoachMarksProps) {
     ? [
         {
           title: "Registra con calma",
-          body: "El botón +1 ocupa todo el ancho. Mantén pulsado para varios registros.",
+          body: "Toca +1 para registrar al instante. Usa «Con nota» si quieres añadir detalle.",
         },
         {
-          title: "Atajos",
-          body: "Usa +3 o +5 rápido. Desliza la tarjeta ← para deshacer.",
+          title: "Deshacer",
+          body: "Desliza la tarjeta ← para deshacer el último registro.",
         },
         {
           title: "Estadísticas",
