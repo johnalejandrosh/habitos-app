@@ -2,19 +2,21 @@ type HabitReportMiniRingProps = {
   completed: number;
   total: number;
   accentTextClass: string;
+  size?: number;
 };
 
 export function HabitReportMiniRing({
   completed,
   total,
   accentTextClass,
+  size = 44,
 }: HabitReportMiniRingProps) {
-  const size = 40;
-  const stroke = 3.5;
+  const stroke = size <= 40 ? 3.5 : 4;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = total === 0 ? 0 : completed / total;
   const offset = circumference * (1 - progress);
+  const fontSize = size <= 40 ? "text-[10px]" : "text-[11px]";
 
   return (
     <div
@@ -45,7 +47,9 @@ export function HabitReportMiniRing({
           className={`${accentTextClass} transition-[stroke-dashoffset] duration-500`}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums text-zinc-700 dark:text-zinc-300">
+      <span
+        className={`absolute inset-0 flex items-center justify-center font-bold tabular-nums text-zinc-700 dark:text-zinc-300 ${fontSize}`}
+      >
         {completed}/{total}
       </span>
     </div>

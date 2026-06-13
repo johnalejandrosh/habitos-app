@@ -28,7 +28,11 @@ const SUMMARY_ITEMS = [
   { key: "bestStreak", label: "Mejor racha", suffix: "" },
 ] as const;
 
-function formatPeriodTitle(period: ReportPeriod, anchor: Date, rangeLabel: string) {
+function formatPeriodTitle(
+  period: ReportPeriod,
+  anchor: Date,
+  rangeLabel: string,
+) {
   if (period === "yearly") {
     return {
       primary: String(anchor.getFullYear()),
@@ -48,8 +52,28 @@ function formatPeriodTitle(period: ReportPeriod, anchor: Date, rangeLabel: strin
 
   return {
     primary: rangeLabel,
-    secondary: "Semana actual",
+    secondary: "Semana seleccionada",
   };
+}
+
+function isCurrentPeriod(period: ReportPeriod, anchor: Date): boolean {
+  const now = new Date();
+  if (period === "yearly") return anchor.getFullYear() === now.getFullYear();
+  if (period === "monthly") {
+    return (
+      anchor.getFullYear() === now.getFullYear() &&
+      anchor.getMonth() === now.getMonth()
+    );
+  }
+  const weekStart = (date: Date) => {
+    const start = new Date(date);
+    const day = start.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + diff);
+    start.setHours(0, 0, 0, 0);
+    return start.getTime();
+  };
+  return weekStart(anchor) === weekStart(now);
 }
 
 export function HabitReportView() {
@@ -70,23 +94,25 @@ export function HabitReportView() {
     ? formatPeriodTitle(period, anchor, report.rangeLabel)
     : null;
 
+  const isTodayPeriod = isCurrentPeriod(period, anchor);
+
   return (
     <div className="flex min-h-dvh flex-col bg-zinc-50 dark:bg-black">
-      <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] backdrop-blur-md dark:border-zinc-800 dark:bg-black/95">
+      <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md dark:border-zinc-800 dark:bg-black/95">
         <div className="mx-auto max-w-lg">
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-2xl">
               Reporte
             </h1>
             <Link
               href="/home"
-              className="rounded-xl bg-zinc-200/80 px-3 py-1.5 text-xs font-semibold text-zinc-700 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
+              className="min-h-10 rounded-xl bg-zinc-200/80 px-3.5 py-2 text-xs font-semibold text-zinc-700 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
             >
               Editar
             </Link>
           </div>
 
-          <div className="mt-4 flex rounded-2xl bg-zinc-200/70 p-1 dark:bg-zinc-900">
+          <div className="mt-3 flex rounded-2xl bg-zinc-200/70 p-1 dark:bg-zinc-900">
             {PERIOD_OPTIONS.map((option) => (
               <button
                 key={option.id}
@@ -95,7 +121,7 @@ export function HabitReportView() {
                   setPeriod(option.id);
                   setAnchor(new Date());
                 }}
-                className={`min-h-10 flex-1 rounded-xl text-sm font-semibold transition ${
+                className={`min-h-11 flex-1 rounded-xl text-sm font-semibold transition active:scale-[0.98] ${
                   period === option.id
                     ? "bg-white text-emerald-700 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                     : "text-zinc-500 dark:text-zinc-400"
@@ -106,50 +132,64 @@ export function HabitReportView() {
             ))}
           </div>
 
-          <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white px-2 py-2 shadow-sm dark:bg-zinc-900">
-            <button
-              type="button"
-              onClick={() =>
-                setAnchor((current) => shiftReportAnchor(period, current, -1))
-              }
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-lg text-zinc-600 active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
-              aria-label="Periodo anterior"
-            >
-              ‹
-            </button>
-
-            <div className="min-w-0 flex-1 text-center">
-              <p
-                className={`truncate font-bold text-zinc-900 dark:text-zinc-50 ${
-                  period === "yearly" ? "text-2xl tabular-nums" : "text-base capitalize"
-                }`}
+          <div className="mt-3 rounded-2xl bg-white p-2 shadow-sm dark:bg-zinc-900">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setAnchor((current) => shiftReportAnchor(period, current, -1))
+                }
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xl text-zinc-600 active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
+                aria-label="Periodo anterior"
               >
-                {periodTitle?.primary ?? "—"}
-              </p>
-              {periodTitle?.secondary && (
-                <p className="mt-0.5 text-xs font-medium text-zinc-500">
-                  {periodTitle.secondary}
+                ‹
+              </button>
+
+              <div className="min-w-0 flex-1 px-1 text-center">
+                <p
+                  className={`truncate font-bold text-zinc-900 dark:text-zinc-50 ${
+                    period === "yearly"
+                      ? "text-2xl tabular-nums"
+                      : "text-lg capitalize"
+                  }`}
+                >
+                  {periodTitle?.primary ?? "—"}
                 </p>
-              )}
+                {periodTitle?.secondary && (
+                  <p className="mt-0.5 text-xs font-medium text-zinc-500">
+                    {periodTitle.secondary}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setAnchor((current) => shiftReportAnchor(period, current, 1))
+                }
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xl text-zinc-600 active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
+                aria-label="Periodo siguiente"
+              >
+                ›
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setAnchor((current) => shiftReportAnchor(period, current, 1))
-              }
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-lg text-zinc-600 active:scale-95 dark:bg-zinc-800 dark:text-zinc-300"
-              aria-label="Periodo siguiente"
-            >
-              ›
-            </button>
+            {!isTodayPeriod && (
+              <button
+                type="button"
+                onClick={() => setAnchor(new Date())}
+                className="mt-2 w-full rounded-xl py-2 text-xs font-semibold text-emerald-700 active:bg-emerald-50 dark:text-emerald-400 dark:active:bg-emerald-950/40"
+              >
+                Volver a hoy
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-5 py-6 pb-32">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-5 px-4 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
         {!store || !report ? (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center py-20">
             <span className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
           </div>
         ) : report.rows.length === 0 ? (
@@ -163,7 +203,7 @@ export function HabitReportView() {
             </p>
             <Link
               href="/home"
-              className="mt-6 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
+              className="mt-6 min-h-12 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
             >
               Ir a inicio
             </Link>
@@ -190,12 +230,12 @@ export function HabitReportView() {
                     className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
                   >
                     <p
-                      className={`text-3xl font-bold tabular-nums ${colors[index % colors.length]}`}
+                      className={`text-2xl font-bold tabular-nums sm:text-3xl ${colors[index % colors.length]}`}
                     >
                       {value}
                       {item.suffix}
                     </p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
                       {item.label}
                     </p>
                   </div>

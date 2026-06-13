@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   cellsByKey,
   getHabitAccentColor,
@@ -10,58 +11,55 @@ import {
 } from "@/lib/habit-reports";
 import { HabitReportMiniRing } from "./HabitReportMiniRing";
 
-function HabitLabel({ row }: { row: HabitReportRow }) {
+function HabitCardHeader({
+  row,
+  index,
+}: {
+  row: HabitReportRow;
+  index: number;
+}) {
+  const accentText = getHabitAccentTextColor(index);
+
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-lg dark:bg-zinc-900">
+    <div className="flex items-center gap-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-xl dark:bg-zinc-900">
         {row.habit.emoji ?? "✅"}
       </span>
-      <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-        {row.habit.name}
-      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {row.habit.name}
+        </h3>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          {row.completedCount} de {row.totalCount} · racha {row.streak} días
+        </p>
+      </div>
+      <HabitReportMiniRing
+        completed={row.completedCount}
+        total={row.totalCount}
+        accentTextClass={accentText}
+      />
     </div>
   );
 }
 
-function ActivityCell({
+function DayPill({
   cell,
   accent,
-  tall = false,
+  emptyHeight = 32,
 }: {
   cell?: HabitReportCell;
   accent: string;
-  tall?: boolean;
+  emptyHeight?: number;
 }) {
   const active = cell?.active;
   const count = cell?.count ?? 0;
-
-  if (tall) {
-    return (
-      <div
-        className="flex h-14 w-full flex-col items-center justify-end"
-        title={
-          active
-            ? `${count} registro${count === 1 ? "" : "s"}`
-            : "Sin registro"
-        }
-      >
-        <span
-          className={`flex w-7 items-center justify-center rounded-full text-[10px] font-bold ${
-            active
-              ? `${accent} min-h-[1.75rem] text-white shadow-sm`
-              : "h-7 bg-zinc-100 text-transparent dark:bg-zinc-900"
-          }`}
-          style={active ? { minHeight: `${Math.max(28, Math.min(count * 4 + 20, 52))}px` } : undefined}
-        >
-          {active ? count : ""}
-        </span>
-      </div>
-    );
-  }
+  const height = active
+    ? Math.max(36, Math.min(count * 3 + 28, 56))
+    : emptyHeight;
 
   return (
     <div
-      className="flex items-center justify-center"
+      className="flex h-14 w-full flex-col items-center justify-end"
       title={
         active
           ? `${count} registro${count === 1 ? "" : "s"}`
@@ -69,11 +67,12 @@ function ActivityCell({
       }
     >
       <span
-        className={`flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-bold ${
+        className={`flex w-8 items-center justify-center rounded-full text-[10px] font-bold ${
           active
             ? `${accent} text-white shadow-sm`
-            : "bg-zinc-100 text-zinc-300 dark:bg-zinc-900 dark:text-zinc-700"
+            : "bg-zinc-100 text-transparent dark:bg-zinc-900"
         }`}
+        style={{ height: `${height}px` }}
       >
         {active ? count : ""}
       </span>
@@ -81,210 +80,62 @@ function ActivityCell({
   );
 }
 
-function EmptyDayCell() {
-  return <div className="h-8 w-8" aria-hidden />;
-}
-
-export function WeeklyReportGrid({ report }: { report: HabitReportData }) {
-  return (
-    <section className="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="grid grid-cols-[minmax(6.5rem,7.5rem)_1fr_2.75rem] items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          Hábito
-        </span>
-        <div className="grid grid-cols-7 gap-1.5">
-          {report.columns.map((column) => (
-            <DayHeader key={column.key} column={column} />
-          ))}
-        </div>
-        <span className="text-center text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-          %
-        </span>
-      </div>
-
-      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-        {report.rows.map((row, index) => (
-          <ReportRow
-            key={row.habit.id}
-            row={row}
-            index={index}
-            columns={report.columns}
-          />
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-export function MonthlyReportGrid({ report }: { report: HabitReportData }) {
-  const weeks = report.monthWeeks ?? [];
-
-  return (
-    <section className="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="grid grid-cols-[minmax(6.5rem,7.5rem)_1fr_2.75rem] items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          Hábito
-        </span>
-        <div className="grid grid-cols-7 gap-1.5">
-          {WEEKDAY_HEADERS.map((day) => (
-            <span
-              key={day}
-              className="text-center text-[11px] font-bold text-zinc-500"
-            >
-              {day}
-            </span>
-          ))}
-        </div>
-        <span className="text-center text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-          %
-        </span>
-      </div>
-
-      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-        {report.rows.map((row, index) => {
-          const accent = getHabitAccentColor(index);
-          const accentText = getHabitAccentTextColor(index);
-          const map = cellsByKey(row);
-
-          return (
-            <li
-              key={row.habit.id}
-              className="grid grid-cols-[minmax(6.5rem,7.5rem)_1fr_2.75rem] items-center gap-2 px-4 py-3"
-            >
-              <HabitLabel row={row} />
-
-              <div className="space-y-1.5">
-                {weeks.map((week, weekIndex) => (
-                  <div
-                    key={weekIndex}
-                    className="grid grid-cols-7 gap-1.5"
-                  >
-                    {week.map((day, dayIndex) =>
-                      day ? (
-                        <div key={day.key} className="flex flex-col items-center gap-0.5">
-                          <ActivityCell
-                            cell={map.get(day.key)}
-                            accent={accent}
-                          />
-                          <span
-                            className={`text-[9px] font-semibold tabular-nums ${
-                              day.isToday
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-zinc-400"
-                            }`}
-                          >
-                            {day.label}
-                          </span>
-                        </div>
-                      ) : (
-                        <EmptyDayCell key={`empty-${weekIndex}-${dayIndex}`} />
-                      ),
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <HabitReportMiniRing
-                completed={row.completedCount}
-                total={row.totalCount}
-                accentTextClass={accentText}
-              />
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-export function YearlyReportGrid({ report }: { report: HabitReportData }) {
-  const timelineWidth = report.columns.length * 2.75;
-
-  return (
-    <section className="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="overflow-x-auto">
-        <div
-          className="min-w-full"
-          style={{ minWidth: `calc(7.5rem + ${timelineWidth}rem + 2.75rem)` }}
-        >
-          <div className="grid grid-cols-[7.5rem_1fr_2.75rem] items-end gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Hábito
-            </span>
-            <div
-              className="grid gap-2"
-              style={{
-                gridTemplateColumns: `repeat(${report.columns.length}, 2.75rem)`,
-              }}
-            >
-              {report.columns.map((column) => (
-                <DayHeader key={column.key} column={column} stacked />
-              ))}
-            </div>
-            <span className="pb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-              %
-            </span>
-          </div>
-
-          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {report.rows.map((row, index) => {
-              const accent = getHabitAccentColor(index);
-              const accentText = getHabitAccentTextColor(index);
-              const map = cellsByKey(row);
-
-              return (
-                <li
-                  key={row.habit.id}
-                  className="grid grid-cols-[7.5rem_1fr_2.75rem] items-center gap-3 px-4 py-3"
-                >
-                  <HabitLabel row={row} />
-
-                  <div
-                    className="grid gap-2"
-                    style={{
-                      gridTemplateColumns: `repeat(${row.cells.length}, 2.75rem)`,
-                    }}
-                  >
-                    {report.columns.map((column) => (
-                      <ActivityCell
-                        key={column.key}
-                        cell={map.get(column.key)}
-                        accent={accent}
-                        tall
-                      />
-                    ))}
-                  </div>
-
-                  <HabitReportMiniRing
-                    completed={row.completedCount}
-                    total={row.totalCount}
-                    accentTextClass={accentText}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function DayHeader({
-  column,
-  stacked = false,
+function MonthDayCell({
+  day,
+  cell,
+  accent,
 }: {
-  column: ReportDayColumn;
-  stacked?: boolean;
+  day: ReportDayColumn;
+  cell?: HabitReportCell;
+  accent: string;
 }) {
+  const active = cell?.active;
+  const count = cell?.count ?? 0;
+
   return (
     <div
-      className={`flex flex-col items-center gap-0.5 ${stacked ? "w-11" : ""}`}
+      className="flex aspect-square w-full items-center justify-center"
+      title={
+        active
+          ? `${count} registro${count === 1 ? "" : "s"}`
+          : `Día ${day.label}`
+      }
     >
       <span
-        className={`font-bold ${
-          stacked ? "text-[10px] uppercase tracking-wide" : "text-[11px]"
-        } ${
+        className={`flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold tabular-nums ${
+          active
+            ? `${accent} text-white shadow-sm`
+            : day.isToday
+              ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500 dark:bg-emerald-950 dark:text-emerald-300"
+              : "bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"
+        }`}
+      >
+        {active ? count : day.label}
+      </span>
+    </div>
+  );
+}
+
+function MonthEmptyCell() {
+  return <div className="aspect-square w-full" aria-hidden />;
+}
+
+function YearMonthCell({
+  column,
+  cell,
+  accent,
+}: {
+  column: ReportDayColumn;
+  cell?: HabitReportCell;
+  accent: string;
+}) {
+  const active = cell?.active;
+  const count = cell?.count ?? 0;
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span
+        className={`text-[10px] font-bold uppercase tracking-wide ${
           column.isToday
             ? "text-emerald-600 dark:text-emerald-400"
             : "text-zinc-500"
@@ -292,41 +143,164 @@ function DayHeader({
       >
         {column.label}
       </span>
-      {column.sublabel && !stacked && (
-        <span className="text-[10px] text-zinc-400">{column.sublabel}</span>
+      <span
+        className={`flex h-12 w-full max-w-[2.75rem] items-center justify-center rounded-2xl text-[11px] font-bold ${
+          active
+            ? `${accent} text-white shadow-sm`
+            : "bg-zinc-100 text-zinc-300 dark:bg-zinc-900 dark:text-zinc-700"
+        }`}
+        title={
+          active
+            ? `${count} registro${count === 1 ? "" : "s"}`
+            : "Sin registro"
+        }
+      >
+        {active ? count : "·"}
+      </span>
+    </div>
+  );
+}
+
+function DayHeader({ column }: { column: ReportDayColumn }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className={`text-[11px] font-bold ${
+          column.isToday
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-zinc-500"
+        }`}
+      >
+        {column.label}
+      </span>
+      {column.sublabel && (
+        <span
+          className={`text-[10px] tabular-nums ${
+            column.isToday
+              ? "font-bold text-emerald-600 dark:text-emerald-400"
+              : "text-zinc-400"
+          }`}
+        >
+          {column.sublabel}
+        </span>
       )}
     </div>
   );
 }
 
-function ReportRow({
+function HabitReportCard({
   row,
   index,
-  columns,
+  children,
 }: {
   row: HabitReportRow;
   index: number;
-  columns: ReportDayColumn[];
+  children: ReactNode;
 }) {
-  const accent = getHabitAccentColor(index);
-  const accentText = getHabitAccentTextColor(index);
-  const map = cellsByKey(row);
+  return (
+    <li className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <HabitCardHeader row={row} index={index} />
+      <div className="mt-4">{children}</div>
+    </li>
+  );
+}
+
+export function WeeklyReportGrid({ report }: { report: HabitReportData }) {
+  return (
+    <ul className="space-y-4">
+      {report.rows.map((row, index) => {
+        const accent = getHabitAccentColor(index);
+        const map = cellsByKey(row);
+
+        return (
+          <HabitReportCard key={row.habit.id} row={row} index={index}>
+            <div className="grid grid-cols-7 gap-1.5">
+              {report.columns.map((column) => (
+                <DayHeader key={column.key} column={column} />
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-1.5">
+              {report.columns.map((column) => (
+                <DayPill
+                  key={column.key}
+                  cell={map.get(column.key)}
+                  accent={accent}
+                />
+              ))}
+            </div>
+          </HabitReportCard>
+        );
+      })}
+    </ul>
+  );
+}
+
+export function MonthlyReportGrid({ report }: { report: HabitReportData }) {
+  const weeks = report.monthWeeks ?? [];
 
   return (
-    <li className="grid grid-cols-[minmax(6.5rem,7.5rem)_1fr_2.75rem] items-center gap-2 px-4 py-3">
-      <HabitLabel row={row} />
+    <ul className="space-y-4">
+      {report.rows.map((row, index) => {
+        const accent = getHabitAccentColor(index);
+        const map = cellsByKey(row);
 
-      <div className="grid grid-cols-7 gap-1.5">
-        {columns.map((column) => (
-          <ActivityCell key={column.key} cell={map.get(column.key)} accent={accent} />
-        ))}
-      </div>
+        return (
+          <HabitReportCard key={row.habit.id} row={row} index={index}>
+            <div className="grid grid-cols-7 gap-1">
+              {WEEKDAY_HEADERS.map((day) => (
+                <span
+                  key={day}
+                  className="pb-1 text-center text-[11px] font-bold text-zinc-500"
+                >
+                  {day}
+                </span>
+              ))}
+            </div>
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} className="mt-1 grid grid-cols-7 gap-1">
+                {week.map((day, dayIndex) =>
+                  day ? (
+                    <MonthDayCell
+                      key={day.key}
+                      day={day}
+                      cell={map.get(day.key)}
+                      accent={accent}
+                    />
+                  ) : (
+                    <MonthEmptyCell key={`empty-${weekIndex}-${dayIndex}`} />
+                  ),
+                )}
+              </div>
+            ))}
+          </HabitReportCard>
+        );
+      })}
+    </ul>
+  );
+}
 
-      <HabitReportMiniRing
-        completed={row.completedCount}
-        total={row.totalCount}
-        accentTextClass={accentText}
-      />
-    </li>
+export function YearlyReportGrid({ report }: { report: HabitReportData }) {
+  return (
+    <ul className="space-y-4">
+      {report.rows.map((row, index) => {
+        const accent = getHabitAccentColor(index);
+        const map = cellsByKey(row);
+
+        return (
+          <HabitReportCard key={row.habit.id} row={row} index={index}>
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+              {report.columns.map((column) => (
+                <YearMonthCell
+                  key={column.key}
+                  column={column}
+                  cell={map.get(column.key)}
+                  accent={accent}
+                />
+              ))}
+            </div>
+          </HabitReportCard>
+        );
+      })}
+    </ul>
   );
 }
