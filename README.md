@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hábitos
 
-## Getting Started
+> Pequeños pasos, cada día.
 
-First, run the development server:
+App web (PWA) para registrar hábitos diarios con un solo toque, seguir tu progreso y construir rachas. Todos los datos se guardan en tu dispositivo: sin cuenta, sin servidor.
+
+## Características
+
+- **Registro con un toque** — botón `+1` por hábito; mantén pulsado para registrar varias veces seguidas o usa «Con nota» para añadir una descripción.
+- **Deshacer con gesto** — desliza la tarjeta hacia la izquierda para deshacer el último registro.
+- **Metas y rachas** — meta diaria por hábito (5 registros) y meta total del día (10), con anillos de progreso, rachas en días y celebraciones con confeti.
+- **Estadísticas e insights** — resumen de 7/14/30 días, gráfico de línea, mapa de actividad semanal, mejor día y tendencia frente al periodo anterior.
+- **Historial** — consulta y revisa los registros de cada hábito.
+- **Reportes** (`/report`) — vista semanal, mensual y anual con tasa de cumplimiento, días exitosos, total de registros y mejor racha.
+- **Recordatorios** — notificaciones por hábito: una hora diaria, varias horas concretas o cada N horas dentro de un rango; opción de avisar solo si aún no has registrado ese día.
+- **Feedback** — sonidos (desactivables), vibración háptica y mensajes de ánimo.
+- **Guía inicial** — coach marks que explican los gestos principales.
+- **PWA** — instalable en el móvil, con service worker y soporte para modo claro/oscuro.
+
+## Rutas
+
+| Ruta      | Descripción                                   |
+| --------- | --------------------------------------------- |
+| `/`       | Página de bienvenida                          |
+| `/home`   | Tracker de hábitos del día                    |
+| `/report` | Reportes semanales, mensuales y anuales       |
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) (App Router) + React 19
+- TypeScript
+- Tailwind CSS 4
+- [Recharts](https://recharts.org) para los gráficos
+- `localStorage` para la persistencia y Web Notifications API + Service Worker para los recordatorios
+
+## Empezar
+
+Requisitos: Node.js 20+ (o Bun).
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando         | Descripción                      |
+| --------------- | -------------------------------- |
+| `npm run dev`   | Servidor de desarrollo           |
+| `npm run build` | Build de producción              |
+| `npm run start` | Sirve el build de producción     |
+| `npm run lint`  | Ejecuta ESLint                   |
 
-## Learn More
+## Estructura del proyecto
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  page.tsx                 # Bienvenida
+  home/                    # Tracker diario
+  report/                  # Reportes por periodo
+components/habits/         # Componentes de UI (tarjetas, sheets, gráficos, anillos…)
+hooks/
+  use-habit-reminders.ts   # Programación de recordatorios
+lib/
+  habits-storage.ts        # Modelo de datos y persistencia en localStorage
+  habit-reports.ts         # Cálculo de reportes semanales/mensuales/anuales
+  insights.ts              # Resúmenes y tendencias
+  notification-prefs.ts    # Preferencias y horarios de recordatorios
+  notifications.ts         # Permisos, service worker y envío de notificaciones
+  habit-feedback.ts        # Metas y mensajes de ánimo
+  sounds.ts / haptics.ts   # Feedback sonoro y háptico
+public/
+  manifest.webmanifest     # Manifest de la PWA
+  sw.js                    # Service worker
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Datos y privacidad
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los hábitos y registros se guardan en `localStorage` bajo la clave `habitos-app-tracking`. No se envía nada a ningún servidor; si borras los datos del navegador, se pierde el historial.
